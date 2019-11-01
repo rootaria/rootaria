@@ -33,7 +33,7 @@ Vagrant.configure("2") do |config|
 	$vbox_img = "centos/7"
 
 	# Run swarm
-	(1..2).each do |i|
+	(1..1).each do |i|
 		config.vm.define "#{$swarm_name_prefix}#{i}" do |node|
 			node.vm.box = "#{$vbox_img}"
 			node.vm.hostname = "#{$swarm_name_prefix}#{i}.#{$domain}"
@@ -44,15 +44,98 @@ Vagrant.configure("2") do |config|
 					"modifyvm", :id,
 					"--cpuexecutioncap", "60",
 					"--memory", "2048",
-					"--cpus", "2",
+					"--cpus", "1",
 					"--audio", "none",
 				]
 			node.vm.provision "shell", inline: <<-SHELL
 				sed -i 's/ChallengeResponseAuthentication no/ChallengeResponseAuthentication yes/g' /etc/ssh/sshd_config
-				systemctl restart sshd
-				 echo 'ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCrKdP2oy41laB4o/JURkwG1byQIK24N/j792c5ZmA5SNpHEMrgym1J17rR9K+CQ29X7DrK1gzcjq8+RkTnH1J+N86SV9zzyzVSkyz2GyVUDDy0EudrhRzPSc1bVf4xIr5vBb10aXiBC40cY2jXewFJypkKbhRK32ZTf2nFfslZHObAhpe4jCJOEDIZIKy6l9RkMxMEKLy7N4X0cf7ggm6gnxYlfwsN4FL4u73bZ5H4N6/i+lQp8a55sYzu+ESPcezcJpMAM5CYnDUQIOF4YpakJpCqezEacNPFXGTcRYqyQvGDu0jNAqcStjmN3C6ToWabtxdVFjDS3/M+HJrm2X/z root@myVM' > /home/vagrant/.ssh/authorized_keys
+
+sed -i 's/#LOCKD_TCPPORT/LOCKD_TCPPORT/g' /etc/sysconfig/nfs
+sed -i 's/#LOCKD_UDPPORT/LOCKD_UDPPORT/g' /etc/sysconfig/nfs
+sed -i 's/#MOUNTD_PORT/MOUNTD_PORT/g' /etc/sysconfig/nfs
+sed -i 's/#STATD_PORT/STATD_PORT/g' /etc/sysconfig/nfs
+sed -i 's/#STATD_OUTGOING_PORT/STATD_OUTGOING_PORT/g' /etc/sysconfig/nfs
+firewall-cmd --permanent --add-port=110/tcp
+firewall-cmd --permanent --add-port=110/udp
+firewall-cmd --permanent --add-port=662/tcp
+firewall-cmd --permanent --add-port=662/udp
+firewall-cmd --permanent --add-port=875/tcp
+firewall-cmd --permanent --add-port=875/udp
+firewall-cmd --permanent --add-port=2049/tcp
+firewall-cmd --permanent --add-port=32803/tcp
+firewall-cmd --permanent --add-port=32769/tcp
+systemctl restart firewalld
+systemctl restart nfs 
+systemctl restart sshd
+
+#server - nfs
+
+mkdir /nfsshare
+chmod -R 777 /nfsshare
+echo '/nfsshare *(rw,fsid=0,sync)' > /etc/export
+
+echo "[TASK 12] Set root password"
+echo "kubeadmin" | passwd --stdin root >/dev/null 2>&1
 			SHELL
 			end
 		end
 	end
+
+
+
+	(2..2).each do |i|
+		config.vm.define "#{$swarm_name_prefix}#{i}" do |node|
+			node.vm.box = "#{$vbox_img}"
+			node.vm.hostname = "#{$swarm_name_prefix}#{i}.#{$domain}"
+			node.vm.network :private_network, ip: "#{$private_net}#{$swarm_node_begin_ip_range+i}"
+#			node.vbguest.auto_update = false
+			node.vm.provider :virtualbox do |vb|
+				vb.customize [
+					"modifyvm", :id,
+					"--cpuexecutioncap", "60",
+					"--memory", "2048",
+					"--cpus", "1",
+					"--audio", "none",
+				]
+			node.vm.provision "shell", inline: <<-SHELL
+				sed -i 's/ChallengeResponseAuthentication no/ChallengeResponseAuthentication yes/g' /etc/ssh/sshd_config
+
+sed -i 's/#LOCKD_TCPPORT/LOCKD_TCPPORT/g' /etc/sysconfig/nfs
+sed -i 's/#LOCKD_UDPPORT/LOCKD_UDPPORT/g' /etc/sysconfig/nfs
+sed -i 's/#MOUNTD_PORT/MOUNTD_PORT/g' /etc/sysconfig/nfs
+sed -i 's/#STATD_PORT/STATD_PORT/g' /etc/sysconfig/nfs
+sed -i 's/#STATD_OUTGOING_PORT/STATD_OUTGOING_PORT/g' /etc/sysconfig/nfs
+firewall-cmd --permanent --add-port=110/tcp
+firewall-cmd --permanent --add-port=110/udp
+firewall-cmd --permanent --add-port=662/tcp
+firewall-cmd --permanent --add-port=662/udp
+firewall-cmd --permanent --add-port=875/tcp
+firewall-cmd --permanent --add-port=875/udp
+firewall-cmd --permanent --add-port=2049/tcp
+firewall-cmd --permanent --add-port=32803/tcp
+firewall-cmd --permanent --add-port=32769/tcp
+systemctl restart firewalld
+systemctl restart nfs 
+systemctl restart sshd
+
+#install docker-ce
+yum install -y yum-utils \
+  device-mapper-persistent-data \
+  lvm2
+yum-config-manager \
+    --add-repo \
+    https://download.docker.com/linux/centos/docker-ce.repo
+yum install docker-ce docker-ce-cli containerd.io -y
+
+
+
+echo "[TASK 12] Set root password"
+echo "kubeadmin" | passwd --stdin root >/dev/null 2>&1
+			SHELL
+			end
+		end
+	end
+
+
+
 end
