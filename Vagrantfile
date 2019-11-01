@@ -50,29 +50,23 @@ Vagrant.configure("2") do |config|
 			node.vm.provision "shell", inline: <<-SHELL
 				sed -i 's/ChallengeResponseAuthentication no/ChallengeResponseAuthentication yes/g' /etc/ssh/sshd_config
 
-sed -i 's/#LOCKD_TCPPORT/LOCKD_TCPPORT/g' /etc/sysconfig/nfs
-sed -i 's/#LOCKD_UDPPORT/LOCKD_UDPPORT/g' /etc/sysconfig/nfs
-sed -i 's/#MOUNTD_PORT/MOUNTD_PORT/g' /etc/sysconfig/nfs
-sed -i 's/#STATD_PORT/STATD_PORT/g' /etc/sysconfig/nfs
-sed -i 's/#STATD_OUTGOING_PORT/STATD_OUTGOING_PORT/g' /etc/sysconfig/nfs
-firewall-cmd --permanent --add-port=110/tcp
-firewall-cmd --permanent --add-port=110/udp
-firewall-cmd --permanent --add-port=662/tcp
-firewall-cmd --permanent --add-port=662/udp
-firewall-cmd --permanent --add-port=875/tcp
-firewall-cmd --permanent --add-port=875/udp
-firewall-cmd --permanent --add-port=2049/tcp
-firewall-cmd --permanent --add-port=32803/tcp
-firewall-cmd --permanent --add-port=32769/tcp
+firewall-cmd --permanent --zone=public --add-service=nfs
+firewall-cmd --permanent --zone=public --add-service=mountd
+firewall-cmd --permanent --zone=public --add-service=rpc-bind
+firewall-cmd --reload
 systemctl restart firewalld
+systemctl restart rpcbind
 systemctl restart nfs 
 systemctl restart sshd
 
 #server - nfs
-
+yum install nfs-utils -y
+systemctl enable rpcbind nfs-server
+systemctl start rpcbind nfs-server
 mkdir /nfsshare
 chmod -R 777 /nfsshare
-echo '/nfsshare *(rw,fsid=0,sync)' > /etc/export
+echo '/nfsshare 192.168.0.0/24(rw,sync,no_root_squash,no_all_squash)' > /etc/exports
+exportfs -r
 
 echo "[TASK 12] Set root password"
 echo "kubeadmin" | passwd --stdin root >/dev/null 2>&1
@@ -99,12 +93,9 @@ echo "kubeadmin" | passwd --stdin root >/dev/null 2>&1
 				]
 			node.vm.provision "shell", inline: <<-SHELL
 				sed -i 's/ChallengeResponseAuthentication no/ChallengeResponseAuthentication yes/g' /etc/ssh/sshd_config
-
-sed -i 's/#LOCKD_TCPPORT/LOCKD_TCPPORT/g' /etc/sysconfig/nfs
-sed -i 's/#LOCKD_UDPPORT/LOCKD_UDPPORT/g' /etc/sysconfig/nfs
-sed -i 's/#MOUNTD_PORT/MOUNTD_PORT/g' /etc/sysconfig/nfs
-sed -i 's/#STATD_PORT/STATD_PORT/g' /etc/sysconfig/nfs
-sed -i 's/#STATD_OUTGOING_PORT/STATD_OUTGOING_PORT/g' /etc/sysconfig/nfs
+sed -i 's/#Port 22/Port 2222/g' /etc/ssh/sshd_config
+semanage port -a -t ssh_port_t -p tcp 22222
+firewall-cmd --permanent --add-port=22222/tcp
 firewall-cmd --permanent --add-port=110/tcp
 firewall-cmd --permanent --add-port=110/udp
 firewall-cmd --permanent --add-port=662/tcp
@@ -118,6 +109,14 @@ systemctl restart firewalld
 systemctl restart nfs 
 systemctl restart sshd
 
+#install client nfs
+yum install nfs-utils -y
+systemctl start rpcbind
+systemctl enable rpcbind
+mkdir /mnt/nfsshare
+mount -t nfs 192.168.0.100:/nfsshare/ /mnt/nfsshare/
+
+
 #install docker-ce
 yum install -y yum-utils \
   device-mapper-persistent-data \
@@ -127,7 +126,46 @@ yum-config-manager \
     https://download.docker.com/linux/centos/docker-ce.repo
 yum install docker-ce docker-ce-cli containerd.io -y
 
+yum install epel-release -y
+yum install -y python-pip
+pip install docker-compose
+systemctl enable docker
+systemctl restart docker
 
+mkdir docker
+cd docker
+cat > docker-compose.yml <<EOF 
+    version: '3.3'
+    services:
+      wordpress:
+        image: wordpress:latest
+        restart: always
+        links:
+          - db:mysql
+        ports:
+          - "80:80"
+        working_dir: /var/www/html
+        volumes:
+          - "/mnt/nfsshare/wp-content:/var/www/html/wp-content"
+        environment:
+          WORDPRESS_DB_HOST: db:3306
+          WORDPRESS_DB_USER: wordpress
+          WORDPRESS_DB_PASSWORD: wordpress
+          WORDPRESS_DB_NAME: wordpress 
+      db:
+        image: mysql:5.7
+        restart: always
+        volumes:
+          - "/mnt/nfsshare/mysql:/var/lib/mysql"
+        environment:
+          MYSQL_ROOT_PASSWORD: secret
+          MYSQL_DATABASE: wordpress
+          MYSQL_USER: wordpress
+          MYSQL_PASSWORD: wordpress
+EOF
+
+
+docker-compose up
 
 echo "[TASK 12] Set root password"
 echo "kubeadmin" | passwd --stdin root >/dev/null 2>&1
