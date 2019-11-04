@@ -33,7 +33,7 @@ Vagrant.configure("2") do |config|
 	$vbox_img = "centos/7"
 
 	# Run swarm
-	(1..1).each do |i|
+	[1].each do |i|
 		config.vm.define "#{$swarm_name_prefix}#{i}" do |node|
 			node.vm.box = "#{$vbox_img}"
 			node.vm.hostname = "#{$swarm_name_prefix}#{i}.#{$domain}"
@@ -114,7 +114,7 @@ cp /vagrant/build-web-test-plan.jmx /jmeter/
 
 
 
-	(2..2).each do |i|
+	[2].each do |i|
 		config.vm.define "#{$swarm_name_prefix}#{i}" do |node|
 			node.vm.box = "#{$vbox_img}"
 			node.vm.hostname = "#{$swarm_name_prefix}#{i}.#{$domain}"
