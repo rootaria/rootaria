@@ -58,8 +58,8 @@ sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
 rpm -Uvh https://repo.zabbix.com/zabbix/4.4/rhel/7/x86_64/zabbix-release-4.4-1.el7.noarch.rpm
 yum install -y epel-release
 yum install -y mysql mariadb mariadb-server zabbix-server-mysql zabbix-web-mysql zabbix-apache-conf java wget  policycoreutils-python
-
-
+sleep 10
+systemctl restart firewalld
 firewall-cmd --permanent --zone=public --add-service=nfs
 firewall-cmd --permanent --zone=public --add-service=mountd
 firewall-cmd --permanent --zone=public --add-service=rpc-bind
@@ -144,7 +144,7 @@ rpm -Uvh https://repo.zabbix.com/zabbix/4.4/rhel/7/x86_64/zabbix-release-4.4-1.e
 yum install -y epel-release
 yum install -y zabbix-agent java wget policycoreutils-python
 
-
+sleep 10
 
 
 
@@ -154,6 +154,7 @@ sed -i 's/ServerActive=127.0.0.1/ServerActive=192.168.0.100/g' /etc/zabbix/zabbi
 systemctl enable zabbix-agent
 systemctl start zabbix-agent
 
+systemctl restart firewalld
 firewall-cmd --permanent --add-port=80/tcp
 firewall-cmd --permanent --add-port=10050/tcp
 firewall-cmd --permanent --add-port=10050/udp
