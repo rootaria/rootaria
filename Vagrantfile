@@ -74,7 +74,7 @@ systemctl restart sshd
 systemctl enable mariadb.service
 systemctl start mariadb.service
 
-sed -i 's/        #php_value date/        php_value date/g' /etc/httpd/conf.d/zabbix.conf
+sed -i 's/        # php_value date/        php_value date/g' /etc/httpd/conf.d/zabbix.conf
 
 #server - nfs
 yum install nfs-utils -y
