@@ -51,6 +51,7 @@ Vagrant.configure("2") do |config|
 				sed -i 's/ChallengeResponseAuthentication no/ChallengeResponseAuthentication yes/g' /etc/ssh/sshd_config
 
 #disable SELinix
+setenforce 0
 sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
 
 #install zabbix java wget mc
@@ -123,6 +124,7 @@ sed -i 's/#Port 22/Port 22222/g' /etc/ssh/sshd_config
 
 
 #disable SELinix
+setenforce 0
 sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
 
 #install zabbix java wget mc
