@@ -75,6 +75,15 @@ systemctl enable mariadb.service
 systemctl start mariadb.service
 
 sed -i 's/        # php_value date/        php_value date/g' /etc/httpd/conf.d/zabbix.conf
+sed -i 's/Riga/Samara/g' /etc/httpd/conf.d/zabbix.conf
+sed -i 's/# DBHost=/DBHost=/g' /etc/zabbix/zabbix_server.conf
+sed -i 's/# DBPassword=/DBPassword=zabbix/g' /etc/zabbix/zabbix_server.conf
+mysqladmin -u root password zabbix
+mysql -uroot -pzabbix < /vagrant/zabbix_sql
+zcat /usr/share/doc/zabbix-server-mysql-4.4.*/create.sql.gz | mysql -uroot -pzabbix zabbix
+cp /vagrant/zabbix.conf.php /etc/zabbix/web/
+
+
 
 #server - nfs
 yum install nfs-utils -y
