@@ -83,7 +83,10 @@ mysql -uroot -pzabbix < /vagrant/zabbix_sql
 zcat /usr/share/doc/zabbix-server-mysql-4.4.*/create.sql.gz | mysql -uroot -pzabbix zabbix
 cp /vagrant/zabbix.conf.php /etc/zabbix/web/
 
-
+systemctl enable httpd
+systemctl restart httpd
+systemctl enable zabbix-server
+systemctl restart zabbix-server
 
 #server - nfs
 yum install nfs-utils -y
@@ -145,8 +148,8 @@ yum install -y zabbix-agent java wget policycoreutils-python
 
 
 
-sed -i 's/# Server=/Server=192.168.0.100/g' /etc/zabbix/zabbix_agentd.conf
-sed -i 's/# ServerActive=/ServerActive=192.168.0.100/g' /etc/zabbix/zabbix_agentd.conf
+sed -i 's/Server=127.0.0.1/Server=192.168.0.100/g' /etc/zabbix/zabbix_agentd.conf
+sed -i 's/ServerActive=127.0.0.1/ServerActive=192.168.0.100/g' /etc/zabbix/zabbix_agentd.conf
 
 systemctl enable zabbix-agent
 systemctl start zabbix-agent
@@ -154,7 +157,8 @@ systemctl start zabbix-agent
 firewall-cmd --permanent --add-port=80/tcp
 firewall-cmd --permanent --add-port=10050/tcp
 firewall-cmd --permanent --add-port=10050/udp
-
+firewall-cmd --permanent --add-port=10051/tcp
+firewall-cmd --permanent --add-port=10051/udp
 
 
 
