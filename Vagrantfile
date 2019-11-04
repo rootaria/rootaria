@@ -50,14 +50,30 @@ Vagrant.configure("2") do |config|
 			node.vm.provision "shell", inline: <<-SHELL
 				sed -i 's/ChallengeResponseAuthentication no/ChallengeResponseAuthentication yes/g' /etc/ssh/sshd_config
 
+#disable SELinix
+sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
+
+#install zabbix java wget mc
+rpm -Uvh https://repo.zabbix.com/zabbix/4.4/rhel/7/x86_64/zabbix-release-4.4-1.el7.noarch.rpm
+yum install -y epel-release
+yum install -y mysql mariadb mariadb-server zabbix-server-mysql zabbix-web-mysql zabbix-apache-conf java wget  policycoreutils-python
+
+
 firewall-cmd --permanent --zone=public --add-service=nfs
 firewall-cmd --permanent --zone=public --add-service=mountd
 firewall-cmd --permanent --zone=public --add-service=rpc-bind
+firewall-cmd --permanent --add-port=80/tcp
+firewall-cmd --permanent --add-port=10051/tcp
+firewall-cmd --permanent --add-port=10051/udp
 firewall-cmd --reload
 systemctl restart firewalld
 systemctl restart rpcbind
 systemctl restart nfs 
 systemctl restart sshd
+systemctl enable mariadb.service
+systemctl start mariadb.service
+
+sed -i 's/        #php_value date/        php_value date/g' /etc/httpd/conf.d/zabbix.conf
 
 #server - nfs
 yum install nfs-utils -y
@@ -68,8 +84,16 @@ chmod -R 777 /nfsshare
 echo '/nfsshare 192.168.0.0/24(rw,sync,no_root_squash,no_all_squash)' > /etc/exports
 exportfs -r
 
-echo "[TASK 12] Set root password"
-echo "kubeadmin" | passwd --stdin root >/dev/null 2>&1
+wget https://www-eu.apache.org/dist//jmeter/binaries/apache-jmeter-5.1.1.tgz
+mkdir /jmeter
+tar -xvzf apache-jmeter-5.1.1.tgz -C /jmeter/
+cp /vagrant/build-web-test-plan.jmx /jmeter/
+
+
+
+
+
+
 			SHELL
 			end
 		end
@@ -93,8 +117,36 @@ echo "kubeadmin" | passwd --stdin root >/dev/null 2>&1
 				]
 			node.vm.provision "shell", inline: <<-SHELL
 				sed -i 's/ChallengeResponseAuthentication no/ChallengeResponseAuthentication yes/g' /etc/ssh/sshd_config
-sed -i 's/#Port 22/Port 2222/g' /etc/ssh/sshd_config
-semanage port -a -t ssh_port_t -p tcp 22222
+
+#change port 22 - 22222
+sed -i 's/#Port 22/Port 22222/g' /etc/ssh/sshd_config
+
+
+#disable SELinix
+sed -i 's/SELINUX=enforcing/SELINUX=disabled/g' /etc/selinux/config
+
+#install zabbix java wget mc
+rpm -Uvh https://repo.zabbix.com/zabbix/4.4/rhel/7/x86_64/zabbix-release-4.4-1.el7.noarch.rpm
+yum install -y epel-release
+yum install -y zabbix-agent java wget policycoreutils-python
+
+
+
+
+
+sed -i 's/# Server=/Server=192.168.0.100/g' /etc/zabbix/zabbix_agentd.conf
+sed -i 's/# ServerActive=/ServerActive=192.168.0.100/g' /etc/zabbix/zabbix_agentd.conf
+
+systemctl enable zabbix-agent
+systemctl start zabbix-agent
+
+firewall-cmd --permanent --add-port=80/tcp
+firewall-cmd --permanent --add-port=10050/tcp
+firewall-cmd --permanent --add-port=10050/udp
+
+
+
+
 firewall-cmd --permanent --add-port=22222/tcp
 firewall-cmd --permanent --add-port=110/tcp
 firewall-cmd --permanent --add-port=110/udp
@@ -109,12 +161,19 @@ systemctl restart firewalld
 systemctl restart nfs 
 systemctl restart sshd
 
+
+
+
+
+
 #install client nfs
 yum install nfs-utils -y
 systemctl start rpcbind
 systemctl enable rpcbind
 mkdir /mnt/nfsshare
 mount -t nfs 192.168.0.100:/nfsshare/ /mnt/nfsshare/
+
+
 
 
 #install docker-ce
@@ -126,49 +185,21 @@ yum-config-manager \
     https://download.docker.com/linux/centos/docker-ce.repo
 yum install docker-ce docker-ce-cli containerd.io -y
 
-yum install epel-release -y
+
 yum install -y python-pip
 pip install docker-compose
 systemctl enable docker
 systemctl restart docker
 
-mkdir docker
-cd docker
-cat > docker-compose.yml <<EOF 
-    version: '3.3'
-    services:
-      wordpress:
-        image: wordpress:latest
-        restart: always
-        links:
-          - db:mysql
-        ports:
-          - "80:80"
-        working_dir: /var/www/html
-        volumes:
-          - "/mnt/nfsshare/wp-content:/var/www/html/wp-content"
-        environment:
-          WORDPRESS_DB_HOST: db:3306
-          WORDPRESS_DB_USER: wordpress
-          WORDPRESS_DB_PASSWORD: wordpress
-          WORDPRESS_DB_NAME: wordpress 
-      db:
-        image: mysql:5.7
-        restart: always
-        volumes:
-          - "/mnt/nfsshare/mysql:/var/lib/mysql"
-        environment:
-          MYSQL_ROOT_PASSWORD: secret
-          MYSQL_DATABASE: wordpress
-          MYSQL_USER: wordpress
-          MYSQL_PASSWORD: wordpress
-EOF
 
 
-docker-compose up
+mkdir /docker
+cp /vagrant/docker-compose.yml /docker/
+cd /docker
+#docker-compose up -d
 
 echo "[TASK 12] Set root password"
-echo "kubeadmin" | passwd --stdin root >/dev/null 2>&1
+
 			SHELL
 			end
 		end
