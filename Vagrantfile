@@ -49,8 +49,9 @@ Vagrant.configure("2") do |config|
 					"--cpus", "1",
 					"--audio", "none",
 				]
+end
 			node.vm.provision "shell", path: "serv1.sh"
-			end
+			
 		end
 	end
 
@@ -70,8 +71,9 @@ Vagrant.configure("2") do |config|
 					"--cpus", "1",
 					"--audio", "none",
 				]
+end
 			node.vm.provision "shell", path: "serv2.sh"
-			end
+			
 		end
 	end
 
