@@ -9,3 +9,9 @@ On 1st server run the command
 
 Result:
 Zabbix server2	Load average is too high (per CPU load over 1.1 for 5m)
+
+To test file_creation, run
+/vagrant/make_garbage
+
+Result:
+Zabbix server2	/: Disk space is critically low (used > 15%)
