@@ -14,4 +14,4 @@ To test file_creation, run
 /vagrant/make_garbage
 
 Result:
-Zabbix server2	/: Disk space is critically low (used > 15%)
+Zabbix server2	/: Disk space is critically low (used > 50%)
