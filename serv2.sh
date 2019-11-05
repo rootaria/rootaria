@@ -20,6 +20,10 @@ sleep 10
 
 sed -i 's/Server=127.0.0.1/Server=192.168.0.100/g' /etc/zabbix/zabbix_agentd.conf
 sed -i 's/ServerActive=127.0.0.1/ServerActive=192.168.0.100/g' /etc/zabbix/zabbix_agentd.conf
+sed -i 's/Hostname=Zabbix server/Hostname=Zabbix server2/g' /etc/zabbix/zabbix_agentd.conf
+
+
+
 
 systemctl enable zabbix-agent
 systemctl start zabbix-agent
